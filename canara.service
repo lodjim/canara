@@ -1,0 +1,20 @@
+[Unit]
+Description=canara — HID injector + WiFi AP
+After=network.target
+Wants=network.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/canara \
+    --scripts /var/lib/canara/scripts \
+    --ssid canara \
+    --pass canara123 \
+    --port 8080
+WorkingDirectory=/var/lib/canara
+Restart=on-failure
+RestartSec=5
+StandardOutput=journal
+StandardError=journal
+
+[Install]
+WantedBy=multi-user.target
