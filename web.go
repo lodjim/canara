@@ -40,6 +40,7 @@ func startWebServer(port, scriptsDir, hidDev string) {
 	mux.HandleFunc("/", handleIndex)
 	mux.HandleFunc("/scripts", handleScripts)
 	mux.HandleFunc("/upload", handleUpload)
+	mux.HandleFunc("/layout", handleLayout)
 	mux.HandleFunc("/save", handleSave)
 	mux.HandleFunc("/load", handleLoad)
 	mux.HandleFunc("/run", handleRun)
@@ -188,6 +189,43 @@ func handleStatus(w http.ResponseWriter, r *http.Request) {
 	execMu.Unlock()
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(s)
+}
+
+func handleLayout(w http.ResponseWriter, r *http.Request) {
+	type info struct {
+		Code    string `json:"code"`
+		Display string `json:"display"`
+	}
+	switch r.Method {
+	case http.MethodGet:
+		var available []info
+		for _, code := range LayoutOrder {
+			l := Layouts[code]
+			available = append(available, info{Code: l.Code, Display: l.Display})
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"current": GetLayout().Code,
+			"layouts": available,
+		})
+	case http.MethodPost:
+		code := r.URL.Query().Get("code")
+		if code == "" {
+			var body struct {
+				Code string `json:"code"`
+			}
+			json.NewDecoder(r.Body).Decode(&body)
+			code = body.Code
+		}
+		if !SetLayout(code) {
+			http.Error(w, "unknown layout: "+code, 400)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		json.NewEncoder(w).Encode(map[string]string{"code": code})
+	default:
+		http.Error(w, "GET or POST only", 405)
+	}
 }
 
 func handleSave(w http.ResponseWriter, r *http.Request) {

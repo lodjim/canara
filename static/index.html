@@ -95,6 +95,13 @@ header{background:#161b22;border-bottom:1px solid #30363d;padding:14px 18px;disp
 .btn-saverun:hover:not(:disabled){background:#2ea043}
 .btn-new{background:transparent;color:#8b949e;border:1px solid #30363d;padding:4px 10px;font-size:12px;border-radius:6px}
 .btn-new:hover{color:#e6edf3;border-color:#484f58}
+
+/* Layout selector */
+.layout-row{display:flex;align-items:center;gap:8px;margin-bottom:10px}
+.layout-label{font-size:12px;color:#8b949e;white-space:nowrap}
+.layout-sel{flex:1;background:#0d1117;border:1px solid #30363d;border-radius:7px;padding:7px 10px;color:#e6edf3;font-size:13px;outline:none;cursor:pointer;transition:border-color .2s;appearance:none;-webkit-appearance:none;background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%238b949e' d='M6 8L1 3h10z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 10px center;padding-right:28px}
+.layout-sel:focus{border-color:#f0883e}
+.layout-sel option{background:#161b22}
 .btn-stop{background:#da3633;color:#fff}
 .btn-stop:hover{background:#f85149}
 
@@ -133,6 +140,13 @@ header{background:#161b22;border-bottom:1px solid #30363d;padding:14px 18px;disp
     <div class="card-title">
       <span>Script Editor</span>
       <button class="btn btn-new" onclick="newScript()">+ New</button>
+    </div>
+
+    <div class="layout-row">
+      <span class="layout-label">⌨ Target keyboard</span>
+      <select class="layout-sel" id="layoutSel" onchange="changeLayout()">
+        <option value="us">Loading…</option>
+      </select>
     </div>
 
     <div class="name-row">
@@ -288,6 +302,32 @@ async function loadIntoEditor(name) {
     toast('Loaded: ' + name);
   } catch (e) {
     toast('Load failed: ' + e.message, 'error');
+  }
+}
+
+/* ════════════════════════════════
+   LAYOUT
+   ════════════════════════════════ */
+async function loadLayouts() {
+  try {
+    const r = await fetch('/layout');
+    const data = await r.json();
+    const sel = document.getElementById('layoutSel');
+    sel.innerHTML = data.layouts.map(l =>
+      `<option value="${l.code}" ${l.code === data.current ? 'selected' : ''}>${l.display}</option>`
+    ).join('');
+  } catch { /* ignore */ }
+}
+
+async function changeLayout() {
+  const sel = document.getElementById('layoutSel');
+  const code = sel.value;
+  try {
+    const r = await fetch('/layout?code=' + code, {method: 'POST'});
+    if (!r.ok) throw new Error(await r.text());
+    toast('Layout: ' + sel.options[sel.selectedIndex].text);
+  } catch (e) {
+    toast('Layout change failed: ' + e.message, 'error');
   }
 }
 
@@ -479,6 +519,7 @@ function esc(s) {
 /* ════════════════════════════════
    INIT
    ════════════════════════════════ */
+loadLayouts();
 loadScripts();
 pollStatus();
 </script>

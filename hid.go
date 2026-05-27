@@ -138,8 +138,9 @@ func (k *HIDKeyboard) SendKey(modifier, keycode byte) error {
 }
 
 func (k *HIDKeyboard) TypeString(s string) error {
+	keys := GetLayout().Keys
 	for _, ch := range s {
-		ks, ok := charToKey[ch]
+		ks, ok := keys[ch]
 		if !ok {
 			continue
 		}
