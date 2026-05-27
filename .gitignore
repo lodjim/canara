@@ -1,0 +1,5 @@
+duckypad
+duckypad-arm64
+duckypad-*
+*.exe
+scripts/

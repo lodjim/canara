@@ -1,0 +1,342 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no">
+<meta name="theme-color" content="#0d1117">
+<title>DuckyPad</title>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{background:#0d1117;color:#e6edf3;font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;font-size:16px;min-height:100vh}
+
+/* Header */
+header{background:#161b22;border-bottom:1px solid #30363d;padding:14px 18px;display:flex;align-items:center;justify-content:space-between}
+.logo{display:flex;align-items:center;gap:10px}
+.logo-icon{font-size:26px}
+.logo-text h1{font-size:18px;font-weight:700;color:#f0883e;line-height:1.1}
+.logo-text p{font-size:11px;color:#8b949e;margin-top:1px}
+.header-badge{background:#21262d;border:1px solid #30363d;border-radius:12px;padding:4px 10px;font-size:11px;color:#8b949e}
+
+/* Layout */
+.page{padding:16px;max-width:560px;margin:0 auto;display:flex;flex-direction:column;gap:14px}
+
+/* Cards */
+.card{background:#161b22;border:1px solid #30363d;border-radius:12px;padding:16px}
+.card-title{font-size:11px;font-weight:600;color:#8b949e;text-transform:uppercase;letter-spacing:.8px;margin-bottom:12px}
+
+/* Upload zone */
+.drop-zone{border:2px dashed #30363d;border-radius:10px;padding:28px 16px;text-align:center;cursor:pointer;transition:border-color .2s,background .2s;position:relative}
+.drop-zone:active,.drop-zone.dragover{border-color:#f0883e;background:rgba(240,136,62,.05)}
+.drop-zone input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
+.drop-icon{font-size:36px;margin-bottom:8px}
+.drop-text{font-size:14px;color:#c9d1d9;font-weight:500}
+.drop-sub{font-size:12px;color:#8b949e;margin-top:4px}
+.upload-progress{display:none;margin-top:12px;background:#21262d;border-radius:6px;overflow:hidden}
+.upload-bar{height:4px;background:#f0883e;width:0%;transition:width .3s}
+.upload-name{font-size:12px;color:#8b949e;margin-top:6px;text-align:center}
+
+/* Status card */
+.status-row{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.badge{display:inline-flex;align-items:center;gap:6px;padding:5px 12px;border-radius:20px;font-size:13px;font-weight:600}
+.badge-idle{background:#21262d;color:#8b949e}
+.badge-running{background:rgba(63,185,80,.15);color:#3fb950;border:1px solid rgba(63,185,80,.3)}
+.badge-done{background:rgba(88,166,255,.15);color:#58a6ff;border:1px solid rgba(88,166,255,.3)}
+.badge-error{background:rgba(248,81,73,.15);color:#f85149;border:1px solid rgba(248,81,73,.3)}
+.dot{width:8px;height:8px;border-radius:50%;background:currentColor;flex-shrink:0}
+.dot-pulse{animation:pulse 1.2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.25}}
+.status-script{font-size:13px;color:#8b949e;margin-top:8px}
+
+/* Log */
+.log-box{display:none;margin-top:10px;background:#0d1117;border:1px solid #21262d;border-radius:8px;padding:10px 12px;font-family:'JetBrains Mono','Fira Code',monospace;font-size:12px;line-height:1.5;max-height:180px;overflow-y:auto}
+.log-line{color:#8b949e;padding:1px 0}
+.log-line.err{color:#f85149}
+.log-line.ok{color:#3fb950}
+
+/* Script list */
+.scripts-list{display:flex;flex-direction:column;gap:8px}
+.script-item{display:flex;align-items:center;background:#0d1117;border:1px solid #30363d;border-radius:8px;padding:12px 12px;gap:10px;transition:border-color .2s}
+.script-item:hover{border-color:#484f58}
+.script-icon{font-size:18px;flex-shrink:0}
+.script-name{font-size:14px;font-weight:500;flex:1;word-break:break-all;line-height:1.3}
+.script-name small{display:block;font-size:11px;color:#8b949e;font-weight:400;margin-top:2px}
+.script-actions{display:flex;gap:6px;flex-shrink:0}
+
+/* Buttons */
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:5px;border:none;border-radius:7px;cursor:pointer;font-size:13px;font-weight:600;padding:8px 14px;transition:opacity .15s,transform .1s;user-select:none}
+.btn:active{transform:scale(.96)}
+.btn:disabled{opacity:.35;cursor:not-allowed;transform:none}
+.btn-run{background:#238636;color:#fff}
+.btn-run:hover:not(:disabled){background:#2ea043}
+.btn-del{background:transparent;color:#f85149;border:1px solid rgba(248,81,73,.4);padding:7px 11px}
+.btn-del:hover{background:rgba(248,81,73,.1)}
+.btn-stop{background:#da3633;color:#fff}
+.btn-stop:hover{background:#f85149}
+
+.empty{text-align:center;padding:32px 16px;color:#8b949e;font-size:14px}
+.empty-icon{font-size:40px;margin-bottom:8px}
+
+/* Toast */
+.toast{position:fixed;bottom:24px;left:50%;transform:translateX(-50%) translateY(80px);background:#238636;color:#fff;padding:10px 20px;border-radius:10px;font-size:14px;font-weight:500;transition:transform .25s cubic-bezier(.34,1.56,.64,1);z-index:99;pointer-events:none;white-space:nowrap;max-width:90vw;text-align:center}
+.toast.show{transform:translateX(-50%) translateY(0)}
+.toast.toast-error{background:#da3633}
+.toast.toast-warn{background:#9a6700}
+
+/* Scrollbar */
+::-webkit-scrollbar{width:4px;height:4px}
+::-webkit-scrollbar-track{background:transparent}
+::-webkit-scrollbar-thumb{background:#30363d;border-radius:2px}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <span class="logo-icon">🦆</span>
+    <div class="logo-text">
+      <h1>DuckyPad</h1>
+      <p>Pi Zero 2W — HID Injector</p>
+    </div>
+  </div>
+  <span class="header-badge" id="connBadge">●&nbsp;Connected</span>
+</header>
+
+<div class="page">
+
+  <!-- Upload -->
+  <div class="card">
+    <div class="card-title">Upload Script</div>
+    <div class="drop-zone" id="dropZone">
+      <input type="file" id="fileInput" accept=".txt,.ds" onchange="uploadFile(this.files[0])">
+      <div class="drop-icon">📄</div>
+      <div class="drop-text">Tap to select a DuckyScript</div>
+      <div class="drop-sub">.txt or .ds &nbsp;·&nbsp; max 10 MB</div>
+    </div>
+    <div class="upload-progress" id="uploadProgress">
+      <div class="upload-bar" id="uploadBar"></div>
+    </div>
+    <div class="upload-name" id="uploadName"></div>
+  </div>
+
+  <!-- Status -->
+  <div class="card">
+    <div class="card-title">Execution</div>
+    <div class="status-row">
+      <span class="badge badge-idle" id="statusBadge">
+        <span class="dot" id="statusDot"></span>
+        <span id="statusText">Idle</span>
+      </span>
+      <button class="btn btn-stop" id="stopBtn" style="display:none" onclick="stopScript()">■ Stop</button>
+    </div>
+    <div class="status-script" id="statusScript" style="display:none"></div>
+    <div class="log-box" id="logBox"></div>
+  </div>
+
+  <!-- Scripts -->
+  <div class="card">
+    <div class="card-title" style="display:flex;justify-content:space-between;align-items:center">
+      <span>Scripts</span>
+      <span id="scriptCount" style="font-size:12px;color:#8b949e"></span>
+    </div>
+    <div class="scripts-list" id="scriptsList">
+      <div class="empty"><div class="empty-icon">📂</div>Loading…</div>
+    </div>
+  </div>
+
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+let polling = false;
+let pollTimer = null;
+let currentScript = null;
+
+/* ─── Script list ─── */
+async function loadScripts() {
+  try {
+    const r = await fetch('/scripts');
+    const list = await r.json();
+    const el = document.getElementById('scriptsList');
+    const cnt = document.getElementById('scriptCount');
+    cnt.textContent = list.length ? list.length + ' script' + (list.length > 1 ? 's' : '') : '';
+
+    if (!list.length) {
+      el.innerHTML = '<div class="empty"><div class="empty-icon">📭</div>No scripts yet.<br>Upload one above!</div>';
+      return;
+    }
+    el.innerHTML = list.map(s => {
+      const ext = s.split('.').pop().toUpperCase();
+      return `
+      <div class="script-item" id="si-${esc(s)}">
+        <span class="script-icon">📝</span>
+        <div class="script-name">${esc(s)}<small>${ext} DuckyScript</small></div>
+        <div class="script-actions">
+          <button class="btn btn-run" onclick="runScript('${esc(s)}')">▶ Run</button>
+          <button class="btn btn-del" onclick="deleteScript('${esc(s)}')" title="Delete">✕</button>
+        </div>
+      </div>`;
+    }).join('');
+  } catch {
+    document.getElementById('scriptsList').innerHTML =
+      '<div class="empty"><div class="empty-icon">⚠️</div>Failed to load scripts.</div>';
+  }
+}
+
+/* ─── Upload ─── */
+async function uploadFile(file) {
+  if (!file) return;
+  const prog = document.getElementById('uploadProgress');
+  const bar  = document.getElementById('uploadBar');
+  const name = document.getElementById('uploadName');
+
+  prog.style.display = 'block';
+  bar.style.width = '30%';
+  name.textContent = 'Uploading: ' + file.name;
+
+  const fd = new FormData();
+  fd.append('script', file);
+  try {
+    bar.style.width = '70%';
+    const r = await fetch('/upload', { method: 'POST', body: fd });
+    bar.style.width = '100%';
+    if (!r.ok) throw new Error(await r.text());
+    const data = await r.json();
+    name.textContent = '✓ Uploaded: ' + data.name;
+    toast('Uploaded "' + data.name + '"');
+    loadScripts();
+  } catch (e) {
+    name.textContent = '✗ Upload failed';
+    toast('Upload failed: ' + e.message, 'error');
+  }
+  setTimeout(() => { prog.style.display = 'none'; bar.style.width = '0%'; }, 2000);
+  document.getElementById('fileInput').value = '';
+}
+
+/* ─── Drag & drop ─── */
+const dz = document.getElementById('dropZone');
+dz.addEventListener('dragover', e => { e.preventDefault(); dz.classList.add('dragover'); });
+dz.addEventListener('dragleave', () => dz.classList.remove('dragover'));
+dz.addEventListener('drop', e => {
+  e.preventDefault(); dz.classList.remove('dragover');
+  const f = e.dataTransfer.files[0];
+  if (f) uploadFile(f);
+});
+
+/* ─── Run / Stop ─── */
+async function runScript(name) {
+  try {
+    const r = await fetch('/run?name=' + encodeURIComponent(name), { method: 'POST' });
+    if (r.status === 409) { toast('A script is already running!', 'warn'); return; }
+    if (!r.ok) throw new Error(await r.text());
+    currentScript = name;
+    toast('Running: ' + name);
+    startPolling();
+  } catch (e) { toast('Error: ' + e.message, 'error'); }
+}
+
+async function stopScript() {
+  // graceful: just wait — we don't have a kill endpoint yet
+  toast('Waiting for script to finish…', 'warn');
+}
+
+/* ─── Delete ─── */
+async function deleteScript(name) {
+  if (!confirm('Delete "' + name + '"?')) return;
+  try {
+    await fetch('/delete?name=' + encodeURIComponent(name), { method: 'DELETE' });
+    toast('Deleted "' + name + '"');
+    loadScripts();
+  } catch { toast('Delete failed', 'error'); }
+}
+
+/* ─── Status polling ─── */
+function startPolling() {
+  if (polling) return;
+  polling = true;
+  pollTimer = setInterval(pollStatus, 600);
+  pollStatus();
+}
+
+async function pollStatus() {
+  try {
+    const r = await fetch('/status');
+    const s = await r.json();
+    updateStatusUI(s);
+    if (!s.running) {
+      clearInterval(pollTimer);
+      polling = false;
+    }
+  } catch {}
+}
+
+function updateStatusUI(s) {
+  const badge  = document.getElementById('statusBadge');
+  const dot    = document.getElementById('statusDot');
+  const text   = document.getElementById('statusText');
+  const info   = document.getElementById('statusScript');
+  const logBox = document.getElementById('logBox');
+  const stop   = document.getElementById('stopBtn');
+
+  badge.className = 'badge ';
+  dot.className = 'dot';
+
+  if (s.running) {
+    badge.className += 'badge-running';
+    dot.className += ' dot-pulse';
+    text.textContent = 'Running…';
+    stop.style.display = 'inline-flex';
+  } else if (s.error) {
+    badge.className += 'badge-error';
+    text.textContent = 'Error';
+    stop.style.display = 'none';
+  } else if (s.done) {
+    badge.className += 'badge-done';
+    text.textContent = 'Done ✓';
+    stop.style.display = 'none';
+  } else {
+    badge.className += 'badge-idle';
+    text.textContent = 'Idle';
+    stop.style.display = 'none';
+  }
+
+  if (s.script) {
+    info.style.display = 'block';
+    info.textContent = '▸ ' + s.script;
+  }
+
+  if (s.log && s.log.length) {
+    logBox.style.display = 'block';
+    logBox.innerHTML = s.log.map(l =>
+      '<div class="log-line">' + esc(l) + '</div>'
+    ).join('');
+    if (s.error) {
+      logBox.innerHTML += '<div class="log-line err">✗ ' + esc(s.error) + '</div>';
+    } else if (s.done) {
+      logBox.innerHTML += '<div class="log-line ok">✓ Completed</div>';
+    }
+    logBox.scrollTop = logBox.scrollHeight;
+  }
+}
+
+/* ─── Toast ─── */
+let toastTimer;
+function toast(msg, type = '') {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'toast' + (type === 'error' ? ' toast-error' : type === 'warn' ? ' toast-warn' : '') + ' show';
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => el.className = 'toast' + (type === 'error' ? ' toast-error' : type === 'warn' ? ' toast-warn' : ''), 2800);
+}
+
+/* ─── Helpers ─── */
+function esc(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+/* ─── Init ─── */
+loadScripts();
+pollStatus(); // sync initial state on page load
+</script>
+</body>
+</html>
