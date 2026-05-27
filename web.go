@@ -40,6 +40,8 @@ func startWebServer(port, scriptsDir, hidDev string) {
 	mux.HandleFunc("/", handleIndex)
 	mux.HandleFunc("/scripts", handleScripts)
 	mux.HandleFunc("/upload", handleUpload)
+	mux.HandleFunc("/save", handleSave)
+	mux.HandleFunc("/load", handleLoad)
 	mux.HandleFunc("/run", handleRun)
 	mux.HandleFunc("/status", handleStatus)
 	mux.HandleFunc("/delete", handleDelete)
@@ -186,6 +188,50 @@ func handleStatus(w http.ResponseWriter, r *http.Request) {
 	execMu.Unlock()
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(s)
+}
+
+func handleSave(w http.ResponseWriter, r *http.Request) {
+	if r.Method != http.MethodPost {
+		http.Error(w, "POST only", 405)
+		return
+	}
+	var body struct {
+		Name    string `json:"name"`
+		Content string `json:"content"`
+	}
+	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
+		http.Error(w, "decode: "+err.Error(), 400)
+		return
+	}
+	name := filepath.Base(body.Name)
+	if name == "" || name == "." {
+		http.Error(w, "invalid name", 400)
+		return
+	}
+	if !strings.HasSuffix(name, ".txt") && !strings.HasSuffix(name, ".ds") {
+		name += ".txt"
+	}
+	if err := os.WriteFile(filepath.Join(globalDir, name), []byte(body.Content), 0644); err != nil {
+		http.Error(w, "write: "+err.Error(), 500)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"name": name})
+}
+
+func handleLoad(w http.ResponseWriter, r *http.Request) {
+	name := filepath.Base(r.URL.Query().Get("name"))
+	if name == "" || name == "." {
+		http.Error(w, "invalid name", 400)
+		return
+	}
+	content, err := os.ReadFile(filepath.Join(globalDir, name))
+	if err != nil {
+		http.Error(w, "not found", 404)
+		return
+	}
+	w.Header().Set("Content-Type", "application/json")
+	json.NewEncoder(w).Encode(map[string]string{"content": string(content)})
 }
 
 func handleDelete(w http.ResponseWriter, r *http.Request) {
